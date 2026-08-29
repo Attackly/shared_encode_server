@@ -1,0 +1,16 @@
+{
+  "name": "Rust & Postgres Dev",
+  "dockerComposeFile": "docker-compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "ckolkman.vscode-postgres"
+      ]
+    }
+  },
+  "postCreateCommand": "cargo install diesel_cli --no-default-features --features postgres"
+}
