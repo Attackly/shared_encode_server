@@ -10,11 +10,11 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: mydb
+          POSTGRES_DB: shared_rencode
         ports:
           - 5432:5432
         options: >-

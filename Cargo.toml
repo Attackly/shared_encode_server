@@ -4,4 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-diesel = { version = "2.2.0", features = ["postgres"] }
+diesel = { version = "2.2", features = ["postgres", "uuid", "chrono"] }
+diesel-async = { version = "0.5", features = ["postgres", "deadpool"] }
+axum = { version = "0.8.9", features = ["macros"]}
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+uuid = { version = "1.26.0", features = ["v7", "serde"] }
+tokio = { version = "1.53.1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4.45", features = ["serde"] }
+dotenvy = "0.15.7"
+hyper-util = { version = "0.1", features = ["server-auto", "tokio"] }
+futures-util = { version = "0.3", features = ["async-await"] }
