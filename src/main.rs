@@ -7,9 +7,9 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use diesel::insert_into;
+use diesel::{ExpressionMethods, insert_into, query_dsl::methods::{FilterDsl, SelectDsl}};
 use models::result::Result;
-use crate::models::reencodes::ReencodeRequest;
+use crate::{models::{reencode_query::ReencodeQuery, reencodes::{self, ReencodeRequest}, vmaf_scores}, schema::reencodes::hash};
 use uuid::Uuid;
 
 // Diesel Async imports
@@ -27,6 +27,12 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() {
+
+    // Test Area
+    println!("FFmpeg version: {}", get_svtav1_version().await.unwrap());
+
+    panic!("Test panic to check if the server is running");
+
     dotenvy::dotenv().ok();
     let db_pool = establish_connection_pool();
 
@@ -71,4 +77,61 @@ async fn new_entry(Json(body): Json<ReencodeRequest> ) -> (StatusCode, Json<Resu
 
 async fn test_v7() -> (StatusCode, Json<Result>) {
     (StatusCode::CREATED, Json(Result { id: Uuid::now_v7() }))
+}
+
+
+
+async fn query_reencode_by_vmaf(Json(body): Json<ReencodeQuery>) {
+    //TODO: THis needs to filter the VMAF Scores too for an avg (or Median? Maybe something weighted? from the Other Table)
+    crate::schema::reencodes::table.filter(hash.eq(body.hash)).filter().get_result::<reencodes::Reencode>(&mut establish_connection_pool().get().await.unwrap());
+
+
+}
+
+
+
+
+
+
+// TODO: Useless for the Server Implementation.
+async fn get_ffmpeg_version() -> std::result::Result<String, Box<dyn std::error::Error>> {
+    let output = tokio::process::Command::new("ffmpeg")
+        .arg("-version")
+        .output()
+        .await.unwrap();
+
+    if output.status.success() {
+        let version_info = String::from_utf8_lossy(&output.stdout);
+        let first_line = version_info.lines().next().unwrap_or("");
+        Ok(first_line.to_string())
+    } else {
+        Err(format!("Failed to get ffmpeg version: {}", String::from_utf8_lossy(&output.stderr)).into())
+    }
+}
+
+async fn get_svtav1_version() -> std::result::Result<String, Box<dyn std::error::Error>> {
+
+    //TODO: Hier muss noch die SVTAV1 version entnommen werden.
+    let output = tokio::process::Command::new("ffmpeg")
+    .args([
+        "-f", "lavfi",
+        "-i", "testsrc=duration=0.1:size=16x16",
+        "-c:v", "libsvtav1",
+        "-frames:v", "1",
+        "-f", "null",
+        "-"])
+        .output()
+        .await;
+
+    println!("Output: {:?}", output);
+
+    let output_unwrapped = output.unwrap();
+
+    if output_unwrapped.status.success() {
+        let version_info = String::from_utf8_lossy(&output_unwrapped.stdout);
+        let first_line = version_info.lines().next().unwrap_or("");
+        Ok(first_line.to_string())
+    } else {
+        Err(format!("Failed to get svt-av1 version: {}", String::from_utf8_lossy(&output_unwrapped.stderr)).into())
+    }
 }

@@ -12,5 +12,6 @@
       ]
     }
   },
+  "updateContentCommand": "sudo apt-get update && sudo apt-get install -y ffmpeg",
   "postCreateCommand": "cargo install diesel_cli --no-default-features --features postgres"
 }

@@ -19,3 +19,8 @@ pub struct VmafScore {
     pub percentile_5: f64,
     pub max: f64,
 }
+
+//TODO: We will need the VMAF model here too...
+// Maybe write the used reencode ID into the Container so we can use a command like 
+// shared-encode upvote ./rencoded-video.mkv
+// shared-encode downvote ./rencoded-video.mkv
