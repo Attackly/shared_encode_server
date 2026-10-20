@@ -1,15 +1,13 @@
 mod models;
 pub mod schema;
 
-use std::env;
+use std::{collections::HashMap, env};
 use axum::{
-    http::StatusCode,
-    routing::{get, post},
-    Json, Router,
+    Json, Router, extract::Query, http::StatusCode, routing::{get, post},
 };
-use diesel::{ExpressionMethods, insert_into, query_dsl::methods::{FilterDsl, SelectDsl}};
+use diesel::{ExpressionMethods, QueryDsl, insert_into, query_dsl::methods::FilterDsl};
 use models::result::Result;
-use crate::{models::{reencode_query::ReencodeQuery, reencodes::{self, ReencodeRequest}, vmaf_scores}, schema::reencodes::hash};
+use crate::models::{reencode_query::ReencodeQuery, reencodes::{self, Reencode, ReencodeRequest}};
 use uuid::Uuid;
 
 // Diesel Async imports
@@ -17,6 +15,7 @@ use diesel_async::pg::AsyncPgConnection;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::RunQueryDsl;
+use diesel::prelude::*;
 
 pub type DbPool = Pool<AsyncPgConnection>;
 
@@ -27,12 +26,6 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() {
-
-    // Test Area
-    println!("FFmpeg version: {}", get_svtav1_version().await.unwrap());
-
-    panic!("Test panic to check if the server is running");
-
     dotenvy::dotenv().ok();
     let db_pool = establish_connection_pool();
 
@@ -41,6 +34,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(|| async { "Server is running" }))
         .route("/new_entry", post(new_entry))
+        .route("/query_vmaf", get(query_reencode_by_vmaf))
         .route("/test_v7", get(test_v7))
         .with_state(state);
 
@@ -81,15 +75,25 @@ async fn test_v7() -> (StatusCode, Json<Result>) {
 
 
 
-async fn query_reencode_by_vmaf(Json(body): Json<ReencodeQuery>) {
+#[axum::debug_handler]
+async fn query_reencode_by_vmaf(Query(params) : Query<HashMap<String ,String>>) -> (StatusCode, Json<Reencode>) {
     //TODO: THis needs to filter the VMAF Scores too for an avg (or Median? Maybe something weighted? from the Other Table)
-    crate::schema::reencodes::table.filter(hash.eq(body.hash)).filter().get_result::<reencodes::Reencode>(&mut establish_connection_pool().get().await.unwrap());
+    let mut conn = establish_connection_pool().get().await.unwrap();
+
+    let query = crate::schema::reencodes::table.inner_join(crate::schema::vmaf_scores::table);
 
 
+    // TODO: This unwrap parse unwrap is a warcrime
+    let result: reencodes::Reencode = FilterDsl::filter(query, crate::schema::reencodes::hash.eq(params.get("hash").unwrap().parse::<i64>().unwrap()))
+        .select(crate::schema::reencodes::all_columns) // Use reencodes::all_columns instead of reencodes::table
+        .get_result(&mut conn)
+        .await.unwrap();
+
+
+    println!("The Result: {:?}", result);
+
+    return (StatusCode::OK, Json(result));
 }
-
-
-
 
 
 
@@ -109,6 +113,7 @@ async fn get_ffmpeg_version() -> std::result::Result<String, Box<dyn std::error:
     }
 }
 
+// TODO: Useless for Server
 async fn get_svtav1_version() -> std::result::Result<String, Box<dyn std::error::Error>> {
 
     //TODO: Hier muss noch die SVTAV1 version entnommen werden.

@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use diesel::prelude::*;
 
-#[derive(Debug, Deserialize, Serialize, Queryable, Selectable, Insertable, Send)]
+#[derive(Debug, Deserialize, Serialize, Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::schema::reencodes)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Reencode {
